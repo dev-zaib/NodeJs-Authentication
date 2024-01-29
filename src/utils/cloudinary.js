@@ -1,6 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
-import {v2 as cloudinary} from 'cloudinary';
           
 cloudinary.config({ 
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
@@ -20,3 +19,5 @@ const uploadOnCloudinary= async ()=>{
         fs.unlinkSync(localFilePath)
     }
 }
+
+export {uploadOnCloudinary}
