@@ -1,1 +1,1 @@
-export const DB_NAME = 'chadtube';
+export const DB_NAME = 'anitube';
