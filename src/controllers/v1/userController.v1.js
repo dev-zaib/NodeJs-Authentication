@@ -1,8 +1,8 @@
-import { asyncHandler } from "../utils/asynchandler.js";
-import { ApiError } from "../utils/ApiError.js";
-import { User } from "../models/userModel.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
+import { asyncHandler } from "../../utils/asynchandler.js";
+import { ApiError } from "../../utils/ApiError.js";
+import { User } from "../../models/userModel.js";
+import { uploadOnCloudinary } from "../../utils/cloudinary.js";
+import { ApiResponse } from "../../utils/ApiResponse.js";
 
 const generateAccessAndRefreshTokens = async(userId) =>{
   try {
@@ -85,8 +85,7 @@ const loginUser = asyncHandler(async (req, res, next) => {
   try {
     const { email, username, password } = req.body;
     if (!username && !email) {
-      throw new Error("username or email is required");
-      // throw new ApiError(400, "username or email is required");
+      throw new ApiError(400, "username or email is required");
     }
     const user = await User.findOne({
       $or: [{ email }, { username }],
@@ -97,8 +96,7 @@ const loginUser = asyncHandler(async (req, res, next) => {
     const isPasswordValid = await user.isPasswordCorrect(password);
   
     if (!isPasswordValid) {
-      throw new Error("Invalid Credentials");
-      // throw new ApiError(401, "Invalid Credentials");
+      throw new ApiError(401, "Invalid Credentials");
     }
   
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
