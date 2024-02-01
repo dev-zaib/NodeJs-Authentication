@@ -2,6 +2,7 @@ import { asyncHandler } from "../../utils/asynchandler.js";
 import { User } from "../../models/userModel.js";
 import { uploadOnCloudinary } from "../../utils/cloudinary.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
+import Jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshTokens = async(userId) =>{
   try {
@@ -151,4 +152,69 @@ const logoutUser = asyncHandler(async(req, res) => {
   .json(new ApiResponse(200, {}, "User logged Out"))
 })
 
-export { registerUser, loginUser, logoutUser };
+const forgotPassword = asyncHandler(async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+  
+    if (!user) {
+      throw new Error("No account with that email address exists.");
+    }
+  
+    const token = Jwt.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '1m' });
+  
+    console.log(`Password reset token for ${email}: ${token}`);
+  
+    res.status(200).json({ message: 'Password reset token has been generated.' });  
+  } catch (error) {
+    next(error)
+  }
+})
+
+const resetPassword = asyncHandler(async (req, res, next) => {
+  const { token, newPassword } = req.body;
+
+  try {
+      const decoded = Jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded._id);
+
+      if (!user) {
+          throw new Error ('User not found.');
+      }
+
+      user.password = newPassword;
+      await user.save();
+
+      res.status(200).json({ message: 'Password has been reset.' });
+  } catch (err) {
+      next(err)
+  }
+});
+
+const changePassword = asyncHandler(async (req, res, next) => {
+  const { oldPassword, newPassword } = req.body;
+
+  try {
+      const user = await User.findById(req.user._id);
+
+      if (!user) {
+          throw new Error ('User not found.');
+      }
+
+      const isPasswordValid = await user.isPasswordCorrect(oldPassword);
+
+      if (!isPasswordValid) {
+          throw new Error ('Invalid password.');
+      }
+
+      user.password = newPassword;
+      await user.save();
+
+      res.status(200).json({ message: 'Password has been changed.' });
+  } catch (err) {
+      next(err)
+  }
+});
+
+
+export { registerUser, loginUser, logoutUser, forgotPassword, resetPassword, changePassword};
