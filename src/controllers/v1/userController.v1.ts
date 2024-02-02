@@ -1,25 +1,51 @@
-import { asyncHandler } from "../../utils/asynchandler.js";
-import { ApiError } from "../../utils/ApiError.js";
-import { User } from "../../models/userModel.js";
-import { uploadOnCloudinary } from "../../utils/cloudinary.js";
-import { ApiResponse } from "../../utils/ApiResponse.js";
-
-const generateAccessAndRefreshTokens = async(userId) =>{
-  try {
-      const user = await User.findById(userId)
-      const accessToken = user.generateAccessToken()
-      const refreshToken = user.generateRefreshToken()
-      user.refreshToken = refreshToken
-      await user.save({ validateBeforeSave: false })
-      return {accessToken, refreshToken}
+import { asyncHandler } from "@/utils/asynchandler";
+import { ApiError } from "@/utils/ApiError";
+import { User } from "@/models/userModel";
+import { uploadOnCloudinary } from "@/utils/cloudinary";
+import { ApiResponse } from "@/utils/ApiResponse";
+import { Request, Response, NextFunction } from "express";
+import { Document } from "mongoose";
 
 
-  } catch (error) {
-      throw new ApiError(500, "Something went wrong while generating referesh and access token")
-  }
+interface UserDocument extends Document {
+  _id: string;
+  username: string;
+  email: string;
+  fullName: string;
+  avatar: string;
+  coverImage?: string;
+  password: string;
+  refreshToken?: string;
+  isPasswordCorrect(password: string): Promise<boolean>;
+  generateAccessToken(): string;
+  generateRefreshToken(): string;
 }
 
-const registerUser = asyncHandler(async (req, res) => {
+interface RequestWithUser extends Request {
+user?: UserDocument;
+}
+
+const generateAccessAndRefreshTokens = async (userId: string) => {
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new Error(
+      "Something went wrong while generating referesh and access token"
+    );
+  }
+};
+
+const registerUser = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const { fullName, email, username, password } = req.body;
 
   if (
@@ -37,27 +63,35 @@ const registerUser = asyncHandler(async (req, res) => {
   }
   existedUser;
 
-  const avatarLocalPath = await req.files?.avatar[0]?.path;
 
-  let coverImageLocalPath;
-  if (
-    req.files &&
-    Array.isArray(req.files.coverImage) &&
-    req.files.coverImage.length > 0
-  ) {
-    coverImageLocalPath = await req.files.coverImage[0].path;
-  }
 
-  if (!avatarLocalPath) {
-    throw new ApiError(400, "Avatar file is required");
-  }
+  let avatarLocalPath;
+    if (req.files && "avatar" in req.files) {
+      avatarLocalPath = await req.files.avatar[0]?.path;
+    }
 
-  const avatar = await uploadOnCloudinary(avatarLocalPath);
-  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    let coverImageLocalPath;
+    if (req.files && "coverImage" in req.files) {
+      coverImageLocalPath = await (
+        req.files as { [fieldname: string]: Express.Multer.File[] }
+      ).coverImage[0]?.path;
+    }
 
-  if (!avatar) {
-    throw new ApiError(400, "Avatar file is required");
-  }
+    if (!avatarLocalPath) {
+      throw new ApiError(400, "Avatar file is required");
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+    let coverImage;
+    if (coverImageLocalPath) {
+      coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    } else {
+      throw new ApiError(400, "Cover image file is required");
+    }
+
+    if (!avatar) {
+      throw new ApiError(400 ,"Avatar file is required");
+    }
 
   const user = await User.create({
     fullName,
@@ -76,12 +110,12 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Something went wrong while registering the user");
   }
 
-  return res
+  res
     .status(201)
     .json(new ApiResponse(200, createdUser, "User registered Successfully"));
 });
 
-const loginUser = asyncHandler(async (req, res, next) => {
+const loginUser = asyncHandler(async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { email, username, password } = req.body;
     if (!username && !email) {
@@ -111,7 +145,7 @@ const loginUser = asyncHandler(async (req, res, next) => {
       secure: true,
     };
   
-    return res
+    res
       .status(200)
       .cookie("accessToken", accessToken, options)
       .cookie("refreshToken", refreshToken, options)
@@ -127,7 +161,10 @@ const loginUser = asyncHandler(async (req, res, next) => {
   }
 });
 
-const logoutUser = asyncHandler(async(req, res) => {
+const logoutUser = asyncHandler(async (req: RequestWithUser, res: Response): Promise<void>=> {
+  if (!req.user) {
+    throw new ApiError(401, "Unauthorized request");
+  }
   await User.findByIdAndUpdate(
       req.user._id,
       {
@@ -145,7 +182,7 @@ const logoutUser = asyncHandler(async(req, res) => {
       secure: true
   }
 
-  return res
+  res
   .status(200)
   .clearCookie("accessToken", options)
   .clearCookie("refreshToken", options)

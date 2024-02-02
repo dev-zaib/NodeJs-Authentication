@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { changePassword, forgotPassword, loginUser, logoutUser, registerUser, resetPassword } from "../../controllers/v2/userController.v2.js";
-import { upload } from "../../middleware/multerMiddleware.js";
-import verifyJWT from "../../middleware/authMiddleware.js";
+import { changePassword, forgotPassword, loginUser, logoutUser, registerUser, resetPassword } from "@/controllers/v2/userController.v2";
+import  {upload}  from "@/middleware/multerMiddleware";
+import verifyJWT from "@/middleware/authMiddleware";
 const router = Router();
 router.route("/register").post(
   upload.fields([

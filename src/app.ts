@@ -10,9 +10,9 @@ app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
 app.use(cookieParser());
 
-import userRouterV1 from "./routes/v1/userRoutes.v1.js";
-import userRouterV2 from "./routes/v2/userRoutes.v2.js";
-import { errorMiddleware } from "./middleware/errorMiddleware.js";
+import userRouterV1 from "./routes/v1/userRoutes.v1";
+import userRouterV2 from "./routes/v2/userRoutes.v2";
+import { errorMiddleware } from "./middleware/errorMiddleware";
 
 app.use(errorMiddleware);
 app.use("/api/v1/users", userRouterV1);
