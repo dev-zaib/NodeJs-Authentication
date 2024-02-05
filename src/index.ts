@@ -1,8 +1,9 @@
+import 'module-alias/register'
 import dotenv from "dotenv";
 import connectDB from "@/db/index";
-import app from "@/app";
-import 'module-alias/register'
 dotenv.config()
+import app from "@/app";
+
 connectDB().then(()=>{
     app.listen(process.env.PORT || 8000, ()=>{
         console.log('Mongodb Connected Successfully')
